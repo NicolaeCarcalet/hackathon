@@ -1,23 +1,42 @@
 package com.hackathon.demo.controller;
 
-import org.apache.jena.query.*;
-import org.springframework.web.bind.annotation.GetMapping;
+import com.hackathon.demo.service.DbPediaSparqlService;
+import org.apache.jena.rdf.model.Resource;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @RestController
 public class SparqlController {
 
-    @GetMapping
-    public String getData() {
-        String queryString = "prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#>\n" +
-                "PREFIX dbo:     <http://dbpedia.org/ontology/>" +
-                "PREFIX dbr:     <http://dbpedia.org/resource/>" +
-                "select ?s where {?s dbo:movement dbr:Impressionism}";
-        Query query = QueryFactory.create(queryString);
-        QueryExecution exec = QueryExecutionFactory.sparqlService("http://dbpedia.org/sparql", query);
-        ResultSet results = exec.execSelect();
-        StringBuilder stringBuilder = new StringBuilder();
-        ResultSetFormatter.out(System.out, results, query);
-        return stringBuilder.toString();
+    @Autowired
+    DbPediaSparqlService dbPediaSparqlService;
+
+    @PostMapping("nameCheck")
+    public List<String> getData(@RequestBody String name) {
+        return dbPediaSparqlService.getPersonsWithSameName(name);
+    }
+
+    @PostMapping("dataCheck")
+    public List<String> getBandsAndArtists(@RequestBody String musicType) {
+        List<Resource> representativeMusicArtist = dbPediaSparqlService.getRepresentativeMusicArtist(musicType);
+        List<Resource> representativeBands = dbPediaSparqlService.getRepresentativeBands(musicType);
+        List<String> bands = representativeBands
+                .stream()
+                .filter(Objects::nonNull)
+                .map(Resource::getURI)
+                .collect(Collectors.toList());
+        List<String> musicArtists = representativeMusicArtist
+                .stream()
+                .filter(Objects::nonNull)
+                .map(Resource::getURI)
+                .collect(Collectors.toList());
+        bands.addAll(musicArtists);
+        return bands;
     }
 }
